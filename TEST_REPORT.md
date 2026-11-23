@@ -71,7 +71,7 @@
 - `test_chat_fee_flow_proposal_and_confirm`: Complete multi-step user flow: note ➡️ proposal ➡️ confirm ➡️ undo.
 - `test_chat_honors_explicit_month`: Verifies chat note targeting a specific month (e.g., `Dec 2026`).
 - `test_chat_disambiguation_multiple_students`: Verifies name collision handling when students share a name.
-- `test_gemini_key_endpoint_validation`: Verifies `.env` saving and rejection of malicious keys.
+- `test_gemini_key_endpoint_forbidden`: Verifies frontend API key configuration is rejected with HTTP 403 Forbidden to enforce backend environment isolation.
 
 ---
 

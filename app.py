@@ -15,8 +15,7 @@ from month_logic import (
 )
 from gemini_service import (
     parse_admin_message,
-    get_api_key,
-    set_api_key
+    get_api_key
 )
 from mock_db import (
     prepare_payment_proposal,
@@ -225,21 +224,9 @@ def create_student():
 
 @app.route("/api/gemini-key", methods=["POST"])
 def update_gemini_key():
-    data = request.get_json() or {}
-    key = (data.get("api_key") or "").strip()
-    if not key:
-        return jsonify({"error": "API key cannot be empty"}), 400
-
-    try:
-        set_api_key(key)
-        return jsonify({
-            "status": "success",
-            "message": "Gemini API Key saved successfully!"
-        })
-    except ValueError as ve:
-        return jsonify({"error": str(ve)}), 400
-    except Exception as e:
-        return jsonify({"error": "Failed to save API key."}), 500
+    return jsonify({
+        "error": "Forbidden: Frontend API key modification is disabled. Please configure GEMINI_API_KEY directly in the backend environment."
+    }), 403
 
 
 @app.route("/api/test-month-calc", methods=["POST"])

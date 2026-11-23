@@ -58,13 +58,13 @@ This document provides a detailed log of every defect identified during the prod
 
 ---
 
-### Bug #6: Missing "API Key" Configuration Button in Header
-- **Severity**: Medium (UI/UX)
-- **Affected File**: `templates/index.html`
-- **Root Cause**: The modal markup `modal-gemini-key` and JavaScript handlers existed, but the button with `id="btn-open-gemini-key"` was omitted from the header bar.
-- **Symptoms**: Users had no visual button to open the Gemini API Key modal.
-- **Fix Implemented**: Added `<button id="btn-open-gemini-key">` with key icon and responsive labels to the top navigation bar.
-- **Retest Result**: Verified button presence, modal opening, saving, and keyboard accessibility.
+### Bug #6: Insecure Client-Side API Key Input Option (CWE-200 / CWE-284)
+- **Severity**: High (Security Architecture)
+- **Affected Files**: `templates/index.html`, `static/js/app.js`, `app.py`
+- **Root Cause**: An in-browser modal and client HTTP endpoint (`/api/gemini-key`) allowed unauthenticated frontend visitors to submit or overwrite server-level API keys.
+- **Symptoms**: Exposing secret key management in client-facing forms presents credential tampering and sniffing vulnerabilities.
+- **Fix Implemented**: Completely removed the API key button and modal from the frontend UI. Decommissioned the client-side `/api/gemini-key` endpoint (returns HTTP 403 Forbidden). API keys are now strictly enforced server-side via the backend environment variable (`GEMINI_API_KEY`).
+- **Retest Result**: Verified removal of all frontend UI triggers, verified HTTP 403 rejection on endpoint, and verified server-side environment variable resolution.
 
 ---
 

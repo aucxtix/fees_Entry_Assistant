@@ -151,16 +151,9 @@ class TestApiEndpoints:
         data2 = res2.get_json()
         assert data2["status"] == "confirmation_required"
 
-    def test_gemini_key_endpoint_validation(self, client):
-        # Empty key
-        res = client.post("/api/gemini-key", json={"api_key": ""})
-        assert res.status_code == 400
-
-        # Invalid key with CRLF injection
-        res2 = client.post("/api/gemini-key", json={"api_key": "valid_key\nATTACK=1"})
-        assert res2.status_code == 400
-
-        # Valid key
-        res3 = client.post("/api/gemini-key", json={"api_key": "AIzaSyTestValidKey123456789"})
-        assert res3.status_code == 200
-        assert res3.get_json()["status"] == "success"
+    def test_gemini_key_endpoint_forbidden(self, client):
+        # Frontend API key modification is forbidden (must be configured in backend environment only)
+        res = client.post("/api/gemini-key", json={"api_key": "AIzaSyTestValidKey123456789"})
+        assert res.status_code == 403
+        data = res.get_json()
+        assert "Forbidden" in data["error"]

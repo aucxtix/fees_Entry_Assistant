@@ -92,7 +92,17 @@ A comprehensive vulnerability assessment was conducted on the **Fees Entry Assis
   1. Added regex validation `^[a-zA-Z0-9_\-]{10,128}$` to reject newlines and malformed strings.
   2. Implemented non-destructive `.env` reading and rewriting: existing key-value pairs are preserved, only updating or appending `GEMINI_API_KEY`.
   3. Added `try ... except OSError` to gracefully tolerate read-only file systems (e.g. serverless containers).
-- **Verification**: Verified via `test_set_api_key_blocks_crlf_injection` and `test_gemini_key_endpoint_validation`.
+- **Verification**: Verified via `test_set_api_key_blocks_crlf_injection`.
+
+---
+
+### SEC-07: Decommissioning Insecure Frontend API Key Management (CWE-200 / CWE-284)
+- **Root Cause**: The application previously included an in-browser modal and client HTTP route (`/api/gemini-key`) allowing arbitrary client requests to submit API keys. In production architectures, secret credentials should never be accepted via client web forms.
+- **Remediation**:
+  1. Removed the API Key trigger button and modal `#modal-gemini-key` from the frontend interface.
+  2. Blocked client-side modification on `/api/gemini-key` with HTTP 403 Forbidden.
+  3. Enforced backend environment isolation: the Gemini API key is strictly loaded via server-side environment variables (`GEMINI_API_KEY`).
+- **Verification**: Verified via `test_gemini_key_endpoint_forbidden`.
 
 ---
 

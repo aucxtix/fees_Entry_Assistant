@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/config');
       if (res.ok) {
         const data = await res.json();
-        if (data.gemini_enabled) {
+        if (data.gemini_enabled || data.has_gemini_key) {
           kpiEngineMode.innerHTML = `<span class="text-blue-600 dark:text-blue-400 font-bold">✨ Gemini AI</span>`;
         } else {
           kpiEngineMode.innerHTML = `<span class="text-orange-600 dark:text-orange-400 font-bold">⚡ Rule Engine</span>`;
@@ -445,15 +445,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalActivityLog = document.getElementById('modal-activity-log');
   const activityLogContainer = document.getElementById('activity-log-container');
   const headerLogCount = document.getElementById('header-log-count');
-
-  // Gemini API Key Modal Elements
-  const btnOpenGeminiKey = document.getElementById('btn-open-gemini-key');
-  const btnCloseGeminiKey = document.getElementById('btn-close-gemini-key');
-  const btnCloseGeminiKeyFooter = document.getElementById('btn-close-gemini-key-footer');
-  const modalGeminiKey = document.getElementById('modal-gemini-key');
-  const inputGeminiKey = document.getElementById('input-gemini-key');
-  const btnSaveGeminiKey = document.getElementById('btn-save-gemini-key');
-  const geminiSaveStatus = document.getElementById('gemini-save-status');
 
   // Add Student Modal Elements
   const btnOpenAddStudent = document.getElementById('btn-open-add-student');
@@ -1124,64 +1115,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==============================================================
-  // 13. GEMINI API KEY MODAL
-  // ==============================================================
-
-  if (btnOpenGeminiKey) {
-    btnOpenGeminiKey.addEventListener('click', () => {
-      if (geminiSaveStatus) geminiSaveStatus.classList.add('hidden');
-      if (inputGeminiKey) inputGeminiKey.value = '';
-      if (modalGeminiKey) modalGeminiKey.classList.remove('hidden');
-    });
-  }
-
-  if (btnCloseGeminiKey) {
-    btnCloseGeminiKey.addEventListener('click', () => {
-      if (modalGeminiKey) modalGeminiKey.classList.add('hidden');
-    });
-  }
-  if (btnCloseGeminiKeyFooter) {
-    btnCloseGeminiKeyFooter.addEventListener('click', () => {
-      if (modalGeminiKey) modalGeminiKey.classList.add('hidden');
-    });
-  }
-
-  if (btnSaveGeminiKey) {
-    btnSaveGeminiKey.addEventListener('click', async () => {
-      const key = inputGeminiKey ? inputGeminiKey.value.trim() : '';
-      if (!key) {
-        alert('Please enter a valid API key');
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/gemini-key', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ api_key: key })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          if (geminiSaveStatus) {
-            geminiSaveStatus.className = 'p-2 rounded text-xs bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800';
-            geminiSaveStatus.textContent = '✓ API Key saved successfully!';
-            geminiSaveStatus.classList.remove('hidden');
-          }
-          checkEngineStatus();
-          if (modalGeminiKey) {
-            setTimeout(() => modalGeminiKey.classList.add('hidden'), 1200);
-          }
-        } else {
-          alert(data.error || 'Failed to save API key');
-        }
-      } catch (e) {
-        alert('Network error saving key');
-      }
-    });
-  }
-
-  // ==============================================================
-  // 14. ADD NEW STUDENT MODAL LOGIC
+  // 13. ADD NEW STUDENT MODAL LOGIC
   // ==============================================================
 
   if (btnOpenAddStudent) {
@@ -1264,14 +1198,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Close modals on overlay click or Escape key
   window.addEventListener('click', (e) => {
-    if (modalGeminiKey && e.target === modalGeminiKey) modalGeminiKey.classList.add('hidden');
     if (modalActivityLog && e.target === modalActivityLog) modalActivityLog.classList.add('hidden');
     if (modalAddStudent && e.target === modalAddStudent) modalAddStudent.classList.add('hidden');
   });
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (modalGeminiKey) modalGeminiKey.classList.add('hidden');
       if (modalActivityLog) modalActivityLog.classList.add('hidden');
       if (modalAddStudent) modalAddStudent.classList.add('hidden');
     }
