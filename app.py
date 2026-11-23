@@ -8,13 +8,10 @@ from datetime import datetime
 import os
 import re
 
-from sheet_config import SHEET_CONFIG, col_number_to_letter
+from sheet_config import SHEET_CONFIG
 from month_logic import (
     determine_target_month,
-    find_last_paid_month,
-    get_next_month_header,
-    get_current_month_header,
-    parse_month_header
+    get_current_month_header
 )
 from gemini_service import (
     parse_admin_message,
@@ -56,9 +53,9 @@ def set_security_headers(response):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; "
-        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; "
         "img-src 'self' data:; "
-        "font-src 'self' data:; "
+        "font-src 'self' data: https://fonts.gstatic.com; "
         "connect-src 'self'; "
         "frame-ancestors 'none';"
     )
