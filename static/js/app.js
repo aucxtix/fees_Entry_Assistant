@@ -63,21 +63,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 50);
   }
 
-  function formatMarkdown(text) {
-    if (!text) return '';
-    return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code class="bg-slate-100 text-indigo-700 px-1 py-0.5 rounded font-mono text-xs">$1</code>')
-      .replace(/\n\n/g, '<br><br>')
-      .replace(/\n• /g, '<br>• ');
-  }
-
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     const div = document.createElement('div');
     div.innerText = str;
     return div.innerHTML;
+  }
+
+  function formatMarkdown(text) {
+    if (!text) return '';
+    // Security Hardening: Escape HTML first to prevent Stored & Reflected XSS (CWE-79)
+    const safe = escapeHtml(text);
+    return safe
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code class="bg-slate-100 text-indigo-700 px-1 py-0.5 rounded font-mono text-xs">$1</code>')
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n• /g, '<br>• ')
+      .replace(/\n/g, '<br>');
   }
 
   function getColLetter(idx) {
@@ -142,9 +145,10 @@ document.addEventListener('DOMContentLoaded', () => {
               <span>Col ${colLetter}</span>
               <button 
                 type="button" 
-                onclick="confirmDeleteColumn('${escapeHtml(m)}')" 
-                class="text-slate-400 hover:text-rose-600 p-0.5 rounded hover:bg-rose-50 transition active:scale-95 cursor-pointer" 
+                data-month="${escapeHtml(m)}"
+                class="btn-delete-col text-slate-400 hover:text-rose-600 p-0.5 rounded hover:bg-rose-50 transition active:scale-95 cursor-pointer" 
                 title="Delete column '${escapeHtml(m)}'"
+                aria-label="Delete column ${escapeHtml(m)}"
               >
                 <i data-lucide="trash-2" class="w-3 h-3"></i>
               </button>
@@ -213,6 +217,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (liveTableHeader) {
+    liveTableHeader.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-delete-col');
+      if (btn) {
+        const month = btn.getAttribute('data-month');
+        if (month) confirmDeleteColumn(month);
+      }
+    });
+  }
+
   // Reset Table Handler
   btnResetTable.addEventListener('click', async () => {
     try {
@@ -223,7 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tableSearchInput) tableSearchInput.value = '';
       await renderLiveMockTable(data.table);
       await refreshActivityLog();
-      appendBotMessage('🔄 **Database reset** to original 116 students from Kiya Tuition Classes.', null, 'info');
+      const count = (data.table && data.table.students) ? data.table.students.length : 0;
+      appendBotMessage(`🔄 **Database reset** to original seed state (${count} students).`, null, 'info');
     } catch (e) {
       alert('Error resetting table');
     }
@@ -770,6 +785,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalGeminiKey && e.target === modalGeminiKey) modalGeminiKey.classList.add('hidden');
     if (modalActivityLog && e.target === modalActivityLog) modalActivityLog.classList.add('hidden');
     if (modalAddStudent && e.target === modalAddStudent) modalAddStudent.classList.add('hidden');
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (modalGeminiKey) modalGeminiKey.classList.add('hidden');
+      if (modalActivityLog) modalActivityLog.classList.add('hidden');
+      if (modalAddStudent) modalAddStudent.classList.add('hidden');
+    }
   });
 
   // Initial load

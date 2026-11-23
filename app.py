@@ -46,6 +46,53 @@ app = Flask(
 )
 
 
+@app.after_request
+def set_security_headers(response):
+    """Applies modern security headers (OWASP ASVS / Top 10 defenses)."""
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+        "img-src 'self' data:; "
+        "font-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none';"
+    )
+    return response
+
+
+@app.errorhandler(400)
+def bad_request(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"status": "error", "error": "Bad request", "message": str(e)}), 400
+    return "Bad Request", 400
+
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"status": "error", "error": "Endpoint not found"}), 404
+    return render_template("index.html"), 404
+
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"status": "error", "error": "Method not allowed"}), 405
+    return "Method Not Allowed", 405
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"status": "error", "error": "An internal server error occurred."}), 500
+    return "Internal Server Error", 500
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -117,7 +164,11 @@ def export_csv():
 @app.route("/api/columns/<path:month_name>", methods=["DELETE"])
 def delete_column_endpoint(month_name):
     """Deletes a month column and clears corresponding payments."""
-    res = delete_month_column(month_name)
+    cleaned = (month_name or "").strip()
+    if not cleaned or len(cleaned) > 50:
+        return jsonify({"status": "error", "reply": "⚠️ Invalid month column name."}), 400
+
+    res = delete_month_column(cleaned)
     timestamp = datetime.now().strftime("%I:%M %p")
     
     return jsonify({
@@ -126,16 +177,16 @@ def delete_column_endpoint(month_name):
         "timestamp": timestamp,
         "table_updated": res["success"],
         "table": get_mock_table_state()
-    })
+    }), (200 if res["success"] else 400)
 
 
 @app.route("/api/columns/delete", methods=["POST"])
 def delete_column_post():
     """Alternative POST endpoint for column deletion."""
     data = request.get_json() or {}
-    month_name = data.get("month_name", "").strip()
-    if not month_name:
-        return jsonify({"status": "error", "reply": "⚠️ Month name is required."}), 400
+    month_name = (data.get("month_name") or "").strip()
+    if not month_name or len(month_name) > 50:
+        return jsonify({"status": "error", "reply": "⚠️ Month name is required (max 50 chars)."}), 400
 
     res = delete_month_column(month_name)
     timestamp = datetime.now().strftime("%I:%M %p")
@@ -146,7 +197,7 @@ def delete_column_post():
         "timestamp": timestamp,
         "table_updated": res["success"],
         "table": get_mock_table_state()
-    })
+    }), (200 if res["success"] else 400)
 
 
 # ==============================================================
@@ -182,11 +233,16 @@ def update_gemini_key():
     if not key:
         return jsonify({"error": "API key cannot be empty"}), 400
 
-    set_api_key(key)
-    return jsonify({
-        "status": "success",
-        "message": "Gemini API Key saved successfully!"
-    })
+    try:
+        set_api_key(key)
+        return jsonify({
+            "status": "success",
+            "message": "Gemini API Key saved successfully!"
+        })
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
+    except Exception as e:
+        return jsonify({"error": "Failed to save API key."}), 500
 
 
 @app.route("/api/test-month-calc", methods=["POST"])

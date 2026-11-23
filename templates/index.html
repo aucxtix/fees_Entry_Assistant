@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Fees Entry Assistant - Report & Column Controls</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -76,9 +76,22 @@
           id="btn-open-add-student" 
           class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition active:scale-95 cursor-pointer" 
           title="Add a new student to the fee sheet"
+          aria-label="Add new student"
         >
           <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
-          <span>+ Add Student</span>
+          <span class="hidden xs:inline">+ Add Student</span>
+          <span class="xs:hidden">+ Student</span>
+        </button>
+
+        <!-- Gemini API Key Button -->
+        <button 
+          id="btn-open-gemini-key" 
+          class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/60 transition active:scale-95 cursor-pointer" 
+          title="Configure Gemini API Key"
+          aria-label="Configure Gemini API Key"
+        >
+          <i data-lucide="key" class="w-3.5 h-3.5 text-indigo-600"></i>
+          <span class="hidden sm:inline">API Key</span>
         </button>
 
         <!-- Download Report Button -->
@@ -87,23 +100,25 @@
           id="btn-download-report" 
           class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition active:scale-95" 
           title="Download complete fee sheet report as CSV"
+          aria-label="Download CSV report"
           download
         >
           <i data-lucide="download" class="w-3.5 h-3.5"></i>
-          <span>Download Report</span>
+          <span class="hidden sm:inline">Download Report</span>
+          <span class="sm:hidden">Report</span>
         </a>
 
         <!-- Activity Log Button -->
-        <button id="btn-open-activity-log" class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/60 transition active:scale-95">
+        <button id="btn-open-activity-log" class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/60 transition active:scale-95" aria-label="Activity Log">
           <i data-lucide="history" class="w-3.5 h-3.5 text-indigo-600"></i>
           <span class="hidden sm:inline">Log</span>
           <span id="header-log-count" class="bg-indigo-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5">0</span>
         </button>
 
         <!-- Reset Mock Table -->
-        <button id="btn-reset-table" class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition active:scale-95" title="Reset table">
+        <button id="btn-reset-table" class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition active:scale-95" title="Reset table" aria-label="Reset Table">
           <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-          <span>Reset</span>
+          <span class="hidden sm:inline">Reset</span>
         </button>
       </div>
     </div>
