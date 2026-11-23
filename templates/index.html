@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Fees Entry Assistant - Report & Column Controls</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              500: '#4f46e5',
+              600: '#4338ca',
+              700: '#3730a3',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    @keyframes cellHighlight {
+      0% { background-color: #a7f3d0; transform: scale(1.05); }
+      100% { background-color: transparent; transform: scale(1); }
+    }
+    .cell-updated {
+      animation: cellHighlight 1.5s ease-out;
+    }
+    @keyframes colPulse {
+      0% { background-color: #fef08a; }
+      100% { background-color: #f8fafc; }
+    }
+    .col-new {
+      animation: colPulse 2s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col font-sans overflow-hidden">
+
+  <!-- TOP APP BAR -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 flex-none shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-100">
+          <i data-lucide="shield-check" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">Fees Entry Assistant</h1>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></span>
+              Reports & Column Control
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 flex items-center space-x-1.5">
+            <span>Download CSV • Delete Columns • Confirmations</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Navigation Buttons -->
+      <div class="flex items-center space-x-1.5 sm:space-x-2">
+        <!-- Add Student Button -->
+        <button 
+          id="btn-open-add-student" 
+          class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition active:scale-95 cursor-pointer" 
+          title="Add a new student to the fee sheet"
+        >
+          <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+          <span>+ Add Student</span>
+        </button>
+
+        <!-- Download Report Button -->
+        <a 
+          href="/api/export-csv" 
+          id="btn-download-report" 
+          class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition active:scale-95" 
+          title="Download complete fee sheet report as CSV"
+          download
+        >
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span>Download Report</span>
+        </a>
+
+        <!-- Activity Log Button -->
+        <button id="btn-open-activity-log" class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/60 transition active:scale-95">
+          <i data-lucide="history" class="w-3.5 h-3.5 text-indigo-600"></i>
+          <span class="hidden sm:inline">Log</span>
+          <span id="header-log-count" class="bg-indigo-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5">0</span>
+        </button>
+
+        <!-- Reset Mock Table -->
+        <button id="btn-reset-table" class="inline-flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition active:scale-95" title="Reset table">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span>Reset</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER (SPLIT / STACKED: LIVE TABLE TOP, CHAT BOTTOM) -->
+  <main class="flex-1 max-w-5xl w-full mx-auto flex flex-col overflow-hidden bg-slate-50 sm:shadow-lg sm:border-x sm:border-slate-200 relative">
+    
+    <!-- ============================================================== -->
+    <!-- SECTION 1: LIVE ON-SCREEN GOOGLE SHEET TABLE                     -->
+    <!-- ============================================================== -->
+    <section class="bg-white border-b border-slate-200 shadow-xs flex-none">
+      <div class="px-3 sm:px-4 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="table" class="w-4 h-4 text-emerald-600"></i>
+          <span class="text-xs font-bold text-slate-800 tracking-tight">Kiya Tuition Classes ("Fees" Tab)</span>
+          <span id="table-student-count" class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-mono font-bold">116 Students</span>
+        </div>
+        
+        <div class="flex items-center space-x-2 text-xs">
+          <!-- Student Search Input -->
+          <div class="relative w-44 sm:w-56">
+            <input 
+              type="text" 
+              id="table-search-input" 
+              placeholder="Search student, class, school..." 
+              class="w-full text-xs bg-white border border-slate-300 rounded-lg pl-7 pr-2 py-1 text-slate-700 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 shadow-2xs"
+            >
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1.5 pointer-events-none"></i>
+          </div>
+
+          <a href="/api/export-csv" class="text-emerald-700 hover:text-emerald-800 font-semibold text-[11px] underline flex items-center px-1" download title="Download full CSV report">
+            <i data-lucide="file-spreadsheet" class="w-3 h-3 mr-1"></i> Export CSV
+          </a>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto max-h-48 sm:max-h-56 overflow-y-auto no-scrollbar">
+        <table class="w-full text-left text-xs border-collapse min-w-[720px]" id="live-mock-table">
+          <thead>
+            <tr class="bg-slate-100 text-slate-700 border-b border-slate-200 font-semibold" id="live-table-header"></tr>
+          </thead>
+          <tbody id="live-table-body" class="divide-y divide-slate-100 text-slate-700 font-mono"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SECTION 2: CHAT INTERFACE WITH SAFETY FLOWS                     -->
+    <!-- ============================================================== -->
+    <div class="flex-1 flex flex-col overflow-hidden relative">
+
+      <!-- Safety Banner -->
+      <div class="bg-emerald-50/70 border-b border-emerald-100 px-4 py-1.5 flex items-center justify-between text-xs text-emerald-900 flex-none">
+        <div class="flex items-center space-x-2 truncate">
+          <i data-lucide="shield" class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"></i>
+          <span class="truncate font-medium text-[11px]">Protected: Confirm before write • 1-click Undo • Download Report • Delete Columns.</span>
+        </div>
+        <button id="btn-clear-chat" class="text-emerald-700 hover:text-emerald-900 text-[11px] font-semibold underline ml-2 flex-shrink-0">
+          Reset Chat
+        </button>
+      </div>
+
+      <!-- MESSAGES STREAM -->
+      <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3.5 scroll-smooth">
+        
+        <!-- Welcome Message -->
+        <div class="flex items-start space-x-3 message-bot">
+          <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm">
+            <i data-lucide="bot" class="w-4 h-4"></i>
+          </div>
+          <div class="max-w-[85%] sm:max-w-[75%] bg-white rounded-2xl rounded-tl-sm p-3.5 shadow-sm border border-slate-200/80 text-slate-800 text-xs sm:text-sm">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-semibold text-xs text-indigo-600">Fees Assistant</span>
+              <span class="text-[10px] text-slate-400">Just now</span>
+            </div>
+            <p class="leading-relaxed">
+              👋 <strong>Report Download & Column Deletion Ready!</strong>
+            </p>
+            <div class="my-2 p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1 text-slate-700">
+              <div>📥 <strong>Download Report:</strong> Click <em>"Download Report"</em> in the header anytime to save a clean CSV of all student fee records.</div>
+              <div>🗑️ <strong>Delete Column:</strong> Click the trash icon <i data-lucide="trash-2" class="w-3 h-3 inline text-slate-400"></i> on any month header, or type <code>"delete column Jan 2027"</code>.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TYPING INDICATOR -->
+      <div id="typing-indicator" class="hidden px-6 py-2 text-xs text-slate-500 flex items-center space-x-2 bg-transparent">
+        <div class="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"></div>
+        <div class="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.2s]"></div>
+        <div class="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.4s]"></div>
+        <span class="text-[11px] text-slate-500">Processing...</span>
+      </div>
+
+      <!-- QUICK SUGGESTION CHIPS -->
+      <div class="px-4 py-2 bg-slate-50 border-t border-slate-200/60 flex-none overflow-x-auto no-scrollbar">
+        <div class="flex items-center space-x-2 text-xs text-slate-600 whitespace-nowrap">
+          <span class="text-[11px] font-semibold text-slate-400 flex items-center">
+            <i data-lucide="zap" class="w-3 h-3 mr-1 text-amber-500"></i> Quick Actions:
+          </span>
+          <button onclick="useQuickPrompt('Alex paid 900')" class="px-2.5 py-1 rounded-full bg-white hover:bg-indigo-50 border border-slate-200 text-slate-700 hover:text-indigo-700 transition text-[11px] active:scale-95 shadow-2xs font-semibold" title="Test Alex (Std 1, Example School)">
+            Alex paid 900
+          </button>
+          <button onclick="useQuickPrompt('Jamie paid 1100')" class="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 border border-slate-200 text-slate-700 hover:text-emerald-700 transition text-[11px] active:scale-95 shadow-2xs font-semibold" title="Test Jamie (Std 3, Example School)">
+            Jamie paid 1100
+          </button>
+          <button onclick="useQuickPrompt('Alex Std 5 paid 1300')" class="px-2.5 py-1 rounded-full bg-white hover:bg-amber-50 border border-slate-200 text-slate-700 hover:text-amber-800 transition text-[11px] active:scale-95 shadow-2xs font-semibold" title="Test disambiguation: Alex (Std 5, Example School)">
+            Alex Std 5 paid 1300
+          </button>
+          <button onclick="useQuickPrompt('delete column Jan 2027')" class="px-2.5 py-1 rounded-full bg-white hover:bg-rose-50 border border-slate-200 text-slate-700 hover:text-rose-700 transition text-[11px] active:scale-95 shadow-2xs" title="Tests deleting a column via chat">
+            "delete column Jan 2027"
+          </button>
+          <button onclick="triggerReportDownload()" class="px-2.5 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 transition text-[11px] active:scale-95 shadow-2xs font-semibold" title="Downloads live CSV">
+            <i data-lucide="download" class="w-3 h-3 inline mr-0.5"></i> Download CSV Report
+          </button>
+        </div>
+      </div>
+
+      <!-- BOTTOM INPUT BAR -->
+      <footer class="bg-white border-t border-slate-200 p-3 sm:p-3.5 flex-none shadow-lg">
+        <form id="chat-form" class="flex items-center space-x-2 max-w-5xl mx-auto">
+          <div class="relative flex-1">
+            <input 
+              type="text" 
+              id="chat-input" 
+              placeholder="Type fee note (e.g. Student Dummy has paid 2000) or 'delete column Jan 2027'..." 
+              class="w-full bg-slate-100 hover:bg-slate-50 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none transition shadow-inner"
+              autocomplete="off"
+              required
+            >
+          </div>
+          <button 
+            type="submit" 
+            id="btn-send"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium flex items-center justify-center space-x-1 shadow-md shadow-indigo-200 transition active:scale-95 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span class="hidden sm:inline text-xs font-semibold">Send</span>
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </form>
+        <div class="mt-1 flex items-center justify-between text-[11px] text-slate-400 px-1">
+          <span>Keyboard Enter will submit.</span>
+          <span>Download report or click trash icon on headers to remove columns.</span>
+        </div>
+      </footer>
+
+    </div>
+
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: ACTIVITY LOG (SESSION HISTORY)                           -->
+  <!-- ============================================================== -->
+  <div id="modal-activity-log" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-indigo-50/70">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+            <i data-lucide="history" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-slate-900">Session Activity Log</h2>
+            <p class="text-xs text-slate-500">History of entries, undos, and column deletions</p>
+          </div>
+        </div>
+        <button id="btn-close-activity-log" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto flex-1 p-4 bg-slate-50/50 space-y-2.5" id="activity-log-container">
+        <div class="p-6 text-center text-xs text-slate-400">No activity yet in this session.</div>
+      </div>
+
+      <div class="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        <a href="/api/export-csv" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800 underline flex items-center" download>
+          <i data-lucide="download" class="w-3.5 h-3.5 mr-1"></i> Download CSV Report
+        </a>
+        <button id="btn-close-activity-log-footer" class="px-4 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100">
+          Close
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: GEMINI API KEY CONFIGURATION                             -->
+  <!-- ============================================================== -->
+  <div id="modal-gemini-key" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-indigo-50/70">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+            <i data-lucide="key" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-slate-900">Gemini API Key</h2>
+            <p class="text-xs text-slate-500">Google Gemini API Key configuration</p>
+          </div>
+        </div>
+        <button id="btn-close-gemini-key" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs text-slate-700">
+        <p class="leading-relaxed">
+          The app uses Google's Gemini Flash model to convert informal chat messages into structured fee data.
+        </p>
+        <div class="space-y-1.5">
+          <label class="block font-semibold text-slate-800">Enter Your Gemini API Key:</label>
+          <input 
+            type="password" 
+            id="input-gemini-key" 
+            placeholder="AIzaSy..." 
+            class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
+          >
+          <p class="text-[11px] text-slate-400">
+            Saved securely in <code>.env</code>.
+          </p>
+        </div>
+
+        <div id="gemini-save-status" class="hidden p-2 rounded text-xs"></div>
+      </div>
+
+      <div class="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        <button id="btn-close-gemini-key-footer" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800">
+          Cancel
+        </button>
+        <button id="btn-save-gemini-key" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition active:scale-95 flex items-center space-x-1">
+          <i data-lucide="save" class="w-3.5 h-3.5"></i>
+          <span>Save API Key</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: ADD NEW STUDENT                                         -->
+  <!-- ============================================================== -->
+  <div id="modal-add-student" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-indigo-50/70">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-slate-900">Add New Student</h2>
+            <p class="text-xs text-slate-500">Record a new student in Kiya Tuition Classes</p>
+          </div>
+        </div>
+        <button id="btn-close-add-student" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-add-student" class="p-5 space-y-3.5 text-xs text-slate-700">
+        <div>
+          <label class="block font-semibold text-slate-800 mb-1">Student Name <span class="text-rose-500">*</span></label>
+          <input 
+            type="text" 
+            id="input-new-student-name" 
+            placeholder="e.g. Aarav Patel" 
+            class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
+            required
+          >
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-800 mb-1">Class / Std</label>
+            <input 
+              type="text" 
+              id="input-new-student-std" 
+              placeholder="e.g. 5, LKG, 10" 
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
+            >
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-800 mb-1">Monthly Fee (₹) <span class="text-rose-500">*</span></label>
+            <input 
+              type="number" 
+              id="input-new-student-fee" 
+              placeholder="e.g. 1200" 
+              min="0"
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 font-mono outline-none focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
+              required
+            >
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-800 mb-1">School Name</label>
+          <input 
+            type="text" 
+            id="input-new-student-school" 
+            placeholder="e.g. Welspun, OMDAV, BPSE" 
+            class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
+          >
+        </div>
+
+        <div id="add-student-status" class="hidden p-2 rounded text-xs"></div>
+
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-end space-x-2">
+          <button 
+            type="button" 
+            id="btn-close-add-student-footer" 
+            class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            id="btn-save-new-student" 
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition active:scale-95 flex items-center space-x-1"
+          >
+            <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+            <span>Add Student</span>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- App Logic -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
