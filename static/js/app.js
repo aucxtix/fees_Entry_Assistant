@@ -1,21 +1,24 @@
 /**
- * Fees Entry Assistant - Frontend Logic & Visual Engines
+ * Fees Entry Assistant - Frontend Logic & Visual Engines (Mobile + Desktop)
  * Includes:
- * 1. Persistent Theme Engine (Light / Dark Mode with System Preference Fallback)
- * 2. Antigravity Particle Simulation (React Bits-inspired interactive canvas)
+ * 1. Persistent Theme Engine (Light / Dark Mode + Mobile Status Bar Sync)
+ * 2. Antigravity Particle Simulation (Touch + Mouse Responsive, Reduced-Motion Safe)
  * 3. Click Spark Burst Particle Engine
- * 4. Live KPI Dashboard & Smooth Animated Counters
- * 5. Full Safety Pipeline (2-step Confirmation, 1-Click Undo, Duplicate Alert, Gap Detection, Activity Log)
- * 6. Responsive Glassmorphic Mock Table Ledger & NLU Mode Indicator
+ * 4. Mobile Workspace Switcher (AI Chat <-> Live Sheet), Overflow Menu & Card View
+ * 5. Live KPI Dashboard & Smooth Animated Counters
+ * 6. Full Safety Pipeline (2-step Confirmation, 1-Click Undo, Duplicate Alert, Gap Detection, Activity Log)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   // ==============================================================
   // 1. THEME ENGINE (LIGHT / DARK MODE)
   // ==============================================================
   const btnThemeToggle = document.getElementById('btn-theme-toggle');
   const themeIconSun = document.getElementById('theme-icon-sun');
   const themeIconMoon = document.getElementById('theme-icon-moon');
+  const metaThemeColor = document.getElementById('meta-theme-color');
 
   function initTheme() {
     const savedTheme = localStorage.getItem('fees_assistant_theme');
@@ -31,13 +34,14 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('fees_assistant_theme', 'dark');
       if (themeIconSun) themeIconSun.classList.remove('hidden');
       if (themeIconMoon) themeIconMoon.classList.add('hidden');
+      if (metaThemeColor) metaThemeColor.setAttribute('content', '#070b14');
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('fees_assistant_theme', 'light');
       if (themeIconSun) themeIconSun.classList.add('hidden');
       if (themeIconMoon) themeIconMoon.classList.remove('hidden');
+      if (metaThemeColor) metaThemeColor.setAttribute('content', '#f8fafc');
     }
-    // Dispatch custom event for particle canvas color adaptation
     window.dispatchEvent(new CustomEvent('theme-change', { detail: { isDark } }));
   }
 
@@ -58,14 +62,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==============================================================
   function initAntigravityCanvas() {
     const canvas = document.getElementById('antigravity-canvas');
-    if (!canvas) return;
+    if (!canvas || prefersReducedMotion) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     let width = 0;
     let height = 0;
-    let dpr = window.devicePixelRatio || 1;
+    let lastWidth = 0;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
     let particles = [];
     let mouse = { x: -1000, y: -1000, active: false };
     let shockwaves = [];
@@ -74,13 +79,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function resize() {
       width = window.innerWidth;
       height = window.innerHeight;
-      dpr = window.devicePixelRatio || 1;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       canvas.style.width = width + 'px';
       canvas.style.height = height + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      rebuildParticles();
+
+      // Avoid resetting particles on vertical-only resize (e.g., mobile keyboard open/close)
+      if (lastWidth === 0 || Math.abs(width - lastWidth) > 15) {
+        lastWidth = width;
+        rebuildParticles();
+      }
     }
 
     function isDarkTheme() {
@@ -90,25 +100,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function getPalette() {
       if (isDarkTheme()) {
         return [
-          { r: 59, g: 130, b: 246 },  // Electric Blue
-          { r: 249, g: 115, b: 22 },  // Radiant Orange
-          { r: 239, g: 68, b: 68 },   // Fiery Red
-          { r: 255, g: 255, b: 255 }, // Soft White
-          { r: 96, g: 165, b: 250 }   // Sky Glow
-        ];
-      } else {
-        return [
-          { r: 37, g: 99, b: 235 },   // Electric Royal Blue
-          { r: 234, g: 88, b: 12 },   // Vibrant Orange
-          { r: 220, g: 38, b: 38 },   // Deep Red
-          { r: 79, g: 70, b: 229 },   // Deep Indigo
-          { r: 14, g: 165, b: 233 }   // Ocean Cyan
+          { r: 59, g: 130, b: 246 },
+          { r: 249, g: 115, b: 22 },
+          { r: 239, g: 68, b: 68 },
+          { r: 255, g: 255, b: 255 },
+          { r: 96, g: 165, b: 250 }
         ];
       }
+      return [
+        { r: 37, g: 99, b: 235 },
+        { r: 234, g: 88, b: 12 },
+        { r: 220, g: 38, b: 38 },
+        { r: 79, g: 70, b: 229 },
+        { r: 14, g: 165, b: 233 }
+      ];
     }
 
     function rebuildParticles() {
-      const count = Math.min(Math.floor((width * height) / 18000), 75);
+      const maxCount = width < 640 ? 28 : 75;
+      const count = Math.min(Math.floor((width * height) / 18000), maxCount);
       const palette = getPalette();
       particles = [];
 
@@ -119,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
           y: Math.random() * height,
           vx: (Math.random() - 0.5) * 0.45,
           vy: (Math.random() - 0.5) * 0.45,
-          radius: Math.random() * 2.2 + 1.2,
+          radius: Math.random() * 2.1 + 1.2,
           color: col,
           baseAlpha: Math.random() * 0.45 + 0.2,
           pulseSpeed: Math.random() * 0.02 + 0.01,
@@ -143,27 +153,45 @@ document.addEventListener('DOMContentLoaded', () => {
       mouse.y = -1000;
     });
 
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches[0]) {
+        mouse.x = e.touches[0].clientX;
+        mouse.y = e.touches[0].clientY;
+        mouse.active = true;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches && e.touches[0]) {
+        mouse.x = e.touches[0].clientX;
+        mouse.y = e.touches[0].clientY;
+        mouse.active = true;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      setTimeout(() => { mouse.active = false; }, 250);
+    }, { passive: true });
+
     window.addEventListener('click', (e) => {
-      // Add a gravitational shockwave ripple
       shockwaves.push({
         x: e.clientX,
         y: e.clientY,
         radius: 5,
         maxRadius: Math.min(width, height) * 0.35,
-        alpha: 0.6,
+        alpha: 0.55,
         speed: 4.5
       });
-      if (shockwaves.length > 5) shockwaves.shift();
+      if (shockwaves.length > 4) shockwaves.shift();
     });
 
     function draw() {
       ctx.clearRect(0, 0, width, height);
 
       const dark = isDarkTheme();
-      const maxConnDist = 95;
+      const maxConnDist = width < 640 ? 80 : 95;
       const maxConnDistSq = maxConnDist * maxConnDist;
 
-      // Update and draw shockwaves
       for (let s = shockwaves.length - 1; s >= 0; s--) {
         const sw = shockwaves[s];
         sw.radius += sw.speed;
@@ -177,14 +205,13 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Repel particles on shockwave front
         for (let i = 0; i < particles.length; i++) {
           const p = particles[i];
           const dx = p.x - sw.x;
           const dy = p.y - sw.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (Math.abs(dist - sw.radius) < 25 && dist > 1) {
-            const force = (1 - Math.abs(dist - sw.radius) / 25) * 1.5;
+            const force = (1 - Math.abs(dist - sw.radius) / 25) * 1.4;
             p.vx += (dx / dist) * force;
             p.vy += (dy / dist) * force;
           }
@@ -195,11 +222,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // Update and draw particles
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
-        // Cursor Antigravity Repulsion
         if (mouse.active) {
           const mdx = p.x - mouse.x;
           const mdy = p.y - mouse.y;
@@ -213,34 +238,27 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
 
-        // Apply friction / max velocity clamping
         p.vx *= 0.985;
         p.vy *= 0.985;
-
-        // Add subtle Brownian drift
         p.vx += (Math.random() - 0.5) * 0.04;
         p.vy += (Math.random() - 0.5) * 0.04;
 
         p.x += p.vx;
         p.y += p.vy;
 
-        // Wrap around boundaries smoothly
         if (p.x < -10) p.x = width + 10;
         if (p.x > width + 10) p.x = -10;
         if (p.y < -10) p.y = height + 10;
         if (p.y > height + 10) p.y = -10;
 
-        // Pulse alpha
         p.pulse += p.pulseSpeed;
         const currentAlpha = p.baseAlpha + Math.sin(p.pulse) * 0.15;
 
-        // Draw particle node
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${Math.max(0.05, currentAlpha)})`;
         ctx.fill();
 
-        // Connect nearby particles
         for (let j = i + 1; j < particles.length; j++) {
           const p2 = particles[j];
           const cdx = p.x - p2.x;
@@ -265,7 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
       animFrameId = requestAnimationFrame(draw);
     }
 
-    // Page Visibility API to save CPU when tab is inactive
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         if (animFrameId) cancelAnimationFrame(animFrameId);
@@ -284,17 +301,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==============================================================
   function initClickSpark() {
     const canvas = document.getElementById('spark-canvas');
-    if (!canvas) return;
+    if (!canvas || prefersReducedMotion) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     let sparks = [];
     let isRunning = false;
-    let dpr = window.devicePixelRatio || 1;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     function resize() {
-      dpr = window.devicePixelRatio || 1;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.floor(window.innerWidth * dpr);
       canvas.height = Math.floor(window.innerHeight * dpr);
       canvas.style.width = window.innerWidth + 'px';
@@ -306,16 +323,17 @@ document.addEventListener('DOMContentLoaded', () => {
     resize();
 
     const sparkColors = [
-      '#2563EB', // Blue
-      '#F97316', // Orange
-      '#EF4444', // Red
-      '#38BDF8', // Light Blue
-      '#FBBF24', // Amber
-      '#FFFFFF'  // White
+      '#2563EB',
+      '#F97316',
+      '#EF4444',
+      '#38BDF8',
+      '#FBBF24',
+      '#FFFFFF'
     ];
 
     window.addEventListener('click', (e) => {
-      const count = 10;
+      if (e.clientX === 0 && e.clientY === 0) return;
+      const count = window.innerWidth < 640 ? 7 : 10;
       for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = Math.random() * 3.5 + 1.5;
@@ -380,13 +398,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==============================================================
   function animateValue(element, start, end, duration = 600, prefix = '', suffix = '') {
     if (!element) return;
+    if (prefersReducedMotion) {
+      element.textContent = `${prefix}${end.toLocaleString()}${suffix}`;
+      return;
+    }
     const startTime = performance.now();
     const diff = end - start;
 
     function step(currentTime) {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
       const ease = 1 - Math.pow(1 - progress, 3);
       const current = Math.round(start + diff * ease);
       element.textContent = `${prefix}${current.toLocaleString()}${suffix}`;
@@ -433,6 +454,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const typingIndicator = document.getElementById('typing-indicator');
   const btnClearChat = document.getElementById('btn-clear-chat');
 
+  // Mobile Workspace Switcher & Overflow Menu Elements
+  const mobileTabChat = document.getElementById('mobile-tab-chat');
+  const mobileTabLedger = document.getElementById('mobile-tab-ledger');
+  const mobileTabLedgerBadge = document.getElementById('mobile-tab-ledger-badge');
+  const ledgerSection = document.getElementById('ledger-section');
+  const chatSection = document.getElementById('chat-section');
+
+  const btnMobileMore = document.getElementById('btn-mobile-more');
+  const mobileMoreMenu = document.getElementById('mobile-more-menu');
+  const btnMobileReset = document.getElementById('btn-mobile-reset');
+
+  // Ledger View Switcher (Cards vs Table)
+  const btnToggleLedgerView = document.getElementById('btn-toggle-ledger-view');
+  const btnToggleLedgerViewDesktop = document.getElementById('btn-toggle-ledger-view-desktop');
+  const iconLedgerView = document.getElementById('icon-ledger-view');
+  const labelLedgerView = document.getElementById('label-ledger-view');
+  const ledgerCardsView = document.getElementById('ledger-cards-view');
+  const ledgerTableView = document.getElementById('ledger-table-view');
+  const mobileMonthsBar = document.getElementById('mobile-months-bar');
+  const mobileStudentCards = document.getElementById('mobile-student-cards');
+
   // Live Mock Table Elements
   const liveTableHeader = document.getElementById('live-table-header');
   const liveTableBody = document.getElementById('live-table-body');
@@ -474,6 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let cachedTableData = null;
   let previousStudentCount = 0;
   let previousBaseFees = 0;
+  let ledgerViewMode = window.innerWidth < 640 ? 'cards' : 'table';
 
   if (window.lucide) {
     lucide.createIcons();
@@ -481,7 +524,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function scrollToBottom() {
     setTimeout(() => {
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
     }, 50);
   }
 
@@ -517,8 +562,211 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==============================================================
-  // 6. LIVE ON-SCREEN GOOGLE SHEET TABLE RENDERING (WITH DARK MODE)
+  // 5B. MOBILE WORKSPACE SWITCHER & OVERFLOW MENU
   // ==============================================================
+  const ACTIVE_TAB_CLS = 'min-h-[38px] flex items-center justify-center space-x-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer btn-primary-gradient shadow-sm';
+  const INACTIVE_TAB_CLS = 'min-h-[38px] flex items-center justify-center space-x-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
+
+  window.setMobileView = function(view) {
+    if (!ledgerSection || !chatSection) return;
+
+    if (view === 'ledger') {
+      ledgerSection.classList.remove('hidden');
+      ledgerSection.classList.add('flex');
+      chatSection.classList.add('hidden');
+      chatSection.classList.remove('flex');
+
+      if (mobileTabLedger) mobileTabLedger.className = ACTIVE_TAB_CLS;
+      if (mobileTabChat) mobileTabChat.className = INACTIVE_TAB_CLS;
+    } else {
+      chatSection.classList.remove('hidden');
+      chatSection.classList.add('flex');
+      ledgerSection.classList.add('hidden');
+      ledgerSection.classList.remove('flex');
+
+      if (mobileTabChat) mobileTabChat.className = ACTIVE_TAB_CLS;
+      if (mobileTabLedger) mobileTabLedger.className = INACTIVE_TAB_CLS;
+      scrollToBottom();
+    }
+    if (window.lucide) lucide.createIcons();
+  };
+
+  if (mobileTabChat) {
+    mobileTabChat.addEventListener('click', () => window.setMobileView('chat'));
+  }
+  if (mobileTabLedger) {
+    mobileTabLedger.addEventListener('click', () => window.setMobileView('ledger'));
+  }
+
+  // Mobile Overflow Menu
+  function closeMobileMoreMenu() {
+    if (mobileMoreMenu) mobileMoreMenu.classList.add('hidden');
+    if (btnMobileMore) btnMobileMore.setAttribute('aria-expanded', 'false');
+  }
+
+  if (btnMobileMore && mobileMoreMenu) {
+    btnMobileMore.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = mobileMoreMenu.classList.contains('hidden');
+      mobileMoreMenu.classList.toggle('hidden', !willOpen);
+      btnMobileMore.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    });
+  }
+
+  if (btnMobileReset && btnResetTable) {
+    btnMobileReset.addEventListener('click', () => {
+      closeMobileMoreMenu();
+      btnResetTable.click();
+    });
+  }
+
+  // Soft Keyboard Scroll Guard for Chat Input on Mobile
+  if (chatInput) {
+    chatInput.addEventListener('focus', () => {
+      if (window.innerWidth < 768) {
+        setTimeout(scrollToBottom, 280);
+      }
+    });
+  }
+
+  // Ledger Cards <-> Table Grid Switcher
+  function applyLedgerViewMode() {
+    if (!ledgerCardsView || !ledgerTableView) return;
+
+    if (ledgerViewMode === 'cards') {
+      ledgerCardsView.classList.remove('hidden');
+      ledgerTableView.classList.add('hidden');
+      if (labelLedgerView) labelLedgerView.textContent = 'Table';
+      if (iconLedgerView) iconLedgerView.setAttribute('data-lucide', 'table-2');
+      if (btnToggleLedgerViewDesktop) {
+        btnToggleLedgerViewDesktop.innerHTML = `<i data-lucide="table-2" class="w-3 h-3 text-blue-500"></i><span>Table</span>`;
+      }
+    } else {
+      ledgerTableView.classList.remove('hidden');
+      ledgerCardsView.classList.add('hidden');
+      if (labelLedgerView) labelLedgerView.textContent = 'Cards';
+      if (iconLedgerView) iconLedgerView.setAttribute('data-lucide', 'layout-grid');
+      if (btnToggleLedgerViewDesktop) {
+        btnToggleLedgerViewDesktop.innerHTML = `<i data-lucide="layout-list" class="w-3 h-3 text-orange-500"></i><span>Cards</span>`;
+      }
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function toggleLedgerViewMode() {
+    ledgerViewMode = ledgerViewMode === 'cards' ? 'table' : 'cards';
+    applyLedgerViewMode();
+  }
+
+  if (btnToggleLedgerView) btnToggleLedgerView.addEventListener('click', toggleLedgerViewMode);
+  if (btnToggleLedgerViewDesktop) btnToggleLedgerViewDesktop.addEventListener('click', toggleLedgerViewMode);
+
+  applyLedgerViewMode();
+
+  // ==============================================================
+  // 6. LIVE LEDGER RENDERING (TABLE GRID + MOBILE CARDS)
+  // ==============================================================
+
+  function renderMobileCards(filteredStudents, months, query) {
+    if (!mobileMonthsBar || !mobileStudentCards) return;
+
+    // Render Month Columns Management Strip
+    if (months.length === 0) {
+      mobileMonthsBar.innerHTML = `<span class="text-[11px] text-slate-400">No active month columns</span>`;
+    } else {
+      mobileMonthsBar.innerHTML = `
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1 flex-shrink-0">Columns:</span>
+        ${months.map(m => {
+          const isNewCol = lastNewCol === m;
+          const badgeTone = isNewCol
+            ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 col-new'
+            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700';
+          return `
+            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono font-semibold whitespace-nowrap flex-shrink-0 ${badgeTone}">
+              <span>${escapeHtml(m)}</span>
+              <button
+                type="button"
+                data-month="${escapeHtml(m)}"
+                class="btn-delete-col text-slate-400 hover:text-red-600 dark:hover:text-red-400 p-0.5 rounded-full active:scale-95 cursor-pointer"
+                title="Delete column '${escapeHtml(m)}'"
+                aria-label="Delete column ${escapeHtml(m)}"
+              >
+                <i data-lucide="x" class="w-3 h-3"></i>
+              </button>
+            </span>
+          `;
+        }).join('')}
+      `;
+    }
+
+    if (filteredStudents.length === 0) {
+      mobileStudentCards.innerHTML = `
+        <div class="col-span-full p-6 text-center text-slate-400 dark:text-slate-500 text-xs">
+          No students found matching "${escapeHtml(query)}".
+        </div>
+      `;
+      return;
+    }
+
+    mobileStudentCards.innerHTML = filteredStudents.map(s => {
+      const payments = s.payments || {};
+      const monthPills = months.map(m => {
+        const paid = payments[m];
+        const isJustUpdated = lastUpdatedCell && lastUpdatedCell.student_id === s.id && lastUpdatedCell.month === m;
+        const pulseCls = isJustUpdated ? 'cell-updated ring-2 ring-orange-400/70' : '';
+
+        if (paid !== undefined && paid !== null && paid !== '') {
+          return `
+            <div class="flex flex-col px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 ${pulseCls}">
+              <span class="text-[9px] font-mono uppercase tracking-wider text-emerald-700/80 dark:text-emerald-400/80">${escapeHtml(m)}</span>
+              <span class="text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">₹${Number(paid).toLocaleString()}</span>
+            </div>
+          `;
+        }
+        return `
+          <div class="flex flex-col px-2.5 py-1.5 rounded-lg bg-slate-50/80 dark:bg-slate-900/60 border border-dashed border-slate-200 dark:border-slate-700/80">
+            <span class="text-[9px] font-mono uppercase tracking-wider text-slate-400 dark:text-slate-500">${escapeHtml(m)}</span>
+            <span class="text-xs font-mono text-slate-400 dark:text-slate-600">Unpaid</span>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <article class="glass-card rounded-xl p-3 space-y-2.5 shadow-xs">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="flex items-center space-x-1.5">
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white truncate">${escapeHtml(s.name)}</h3>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex-shrink-0">Std ${escapeHtml(s.std || '—')}</span>
+              </div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">${escapeHtml(s.school || 'School not set')}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <div class="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-semibold">Base Fee</div>
+              <div class="text-xs font-mono font-bold text-orange-600 dark:text-orange-400">₹${Number(s.monthly_fee).toLocaleString()}</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 min-[380px]:grid-cols-3 gap-1.5">
+            ${monthPills}
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
+            <button
+              type="button"
+              data-student-name="${escapeHtml(s.name)}"
+              data-student-std="${escapeHtml(s.std || '')}"
+              data-student-fee="${Number(s.monthly_fee) || 0}"
+              class="btn-card-quick-pay min-h-[34px] px-3 py-1 rounded-lg text-[11px] font-bold bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 inline-flex items-center space-x-1 active:scale-95 cursor-pointer"
+            >
+              <i data-lucide="zap" class="w-3 h-3 text-orange-500"></i>
+              <span>Quick Pay (₹${Number(s.monthly_fee).toLocaleString()})</span>
+            </button>
+          </div>
+        </article>
+      `;
+    }).join('');
+  }
 
   async function renderLiveMockTable(data = null) {
     try {
@@ -534,7 +782,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const students = data.students || [];
       const totalBase = data.total_base_fees || 0;
 
-      // Update KPI Counter animations
+      // Update KPI Counter animations & Mobile Tab Badge
+      if (mobileTabLedgerBadge) {
+        mobileTabLedgerBadge.textContent = students.length;
+      }
       if (kpiStudentsCount) {
         animateValue(kpiStudentsCount, previousStudentCount, students.length, 500);
         previousStudentCount = students.length;
@@ -547,7 +798,6 @@ document.addEventListener('DOMContentLoaded', () => {
         kpiMonthsCount.textContent = `${months.length} Active`;
       }
 
-      // Update student count badge
       if (tableStudentCount) {
         tableStudentCount.textContent = `${students.length} Students • ₹${totalBase.toLocaleString()}`;
       }
@@ -572,7 +822,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
       months.forEach((m, idx) => {
-        const colLetter = getColLetter(4 + idx); // Index 4 = Col E
+        const colLetter = getColLetter(4 + idx);
         const isNewCol = (lastNewCol === m);
         const colBgClass = isNewCol 
           ? 'bg-amber-100 dark:bg-amber-950/60 col-new text-amber-900 dark:text-amber-300' 
@@ -651,6 +901,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
       }
 
+      // Keep Mobile Card View synchronized with zero extra fetches
+      renderMobileCards(filteredStudents, months, query);
+
       if (window.lucide) {
         lucide.createIcons();
       }
@@ -664,11 +917,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (tableSearchInput) {
     tableSearchInput.addEventListener('input', () => {
       if (btnClearSearch) {
-        if (tableSearchInput.value.trim().length > 0) {
-          btnClearSearch.classList.remove('hidden');
-        } else {
-          btnClearSearch.classList.add('hidden');
-        }
+        btnClearSearch.classList.toggle('hidden', tableSearchInput.value.trim().length === 0);
       }
       renderLiveMockTable(cachedTableData);
     });
@@ -683,35 +932,58 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (liveTableHeader) {
-    liveTableHeader.addEventListener('click', (e) => {
-      const btn = e.target.closest('.btn-delete-col');
-      if (btn) {
-        const month = btn.getAttribute('data-month');
-        if (month) confirmDeleteColumn(month);
+  // Event Delegation for Column Delete (Table Header + Mobile Month Strip)
+  function handleDeleteColumnClick(e) {
+    const btn = e.target.closest('.btn-delete-col');
+    if (btn) {
+      const month = btn.getAttribute('data-month');
+      if (month) confirmDeleteColumn(month);
+    }
+  }
+
+  if (liveTableHeader) liveTableHeader.addEventListener('click', handleDeleteColumnClick);
+  if (mobileMonthsBar) mobileMonthsBar.addEventListener('click', handleDeleteColumnClick);
+
+  // Event Delegation for Student Card Quick Pay Button
+  if (mobileStudentCards) {
+    mobileStudentCards.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-card-quick-pay');
+      if (!btn) return;
+      const name = btn.getAttribute('data-student-name') || '';
+      const std = btn.getAttribute('data-student-std') || '';
+      const fee = btn.getAttribute('data-student-fee') || '';
+      const stdPart = std ? ` Std ${std}` : '';
+      if (chatInput) {
+        chatInput.value = `${name}${stdPart} paid ${fee}`;
+        if (window.innerWidth < 768) {
+          window.setMobileView('chat');
+        }
+        chatInput.focus();
       }
     });
   }
 
   // Reset Table Handler
-  btnResetTable.addEventListener('click', async () => {
-    try {
-      const res = await fetch('/api/mock-reset', { method: 'POST' });
-      const data = await res.json();
-      lastUpdatedCell = null;
-      lastNewCol = null;
-      if (tableSearchInput) {
-        tableSearchInput.value = '';
-        if (btnClearSearch) btnClearSearch.classList.add('hidden');
+  if (btnResetTable) {
+    btnResetTable.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/mock-reset', { method: 'POST' });
+        const data = await res.json();
+        lastUpdatedCell = null;
+        lastNewCol = null;
+        if (tableSearchInput) {
+          tableSearchInput.value = '';
+          if (btnClearSearch) btnClearSearch.classList.add('hidden');
+        }
+        await renderLiveMockTable(data.table);
+        await refreshActivityLog();
+        const count = (data.table && data.table.students) ? data.table.students.length : 0;
+        appendBotMessage(`🔄 **Database reset** to original seed state (${count} students).`, null, 'info');
+      } catch (e) {
+        alert('Error resetting table');
       }
-      await renderLiveMockTable(data.table);
-      await refreshActivityLog();
-      const count = (data.table && data.table.students) ? data.table.students.length : 0;
-      appendBotMessage(`🔄 **Database reset** to original seed state (${count} students).`, null, 'info');
-    } catch (e) {
-      alert('Error resetting table');
-    }
-  });
+    });
+  }
 
   // ==============================================================
   // 7. CHAT INTERFACE & INTERACTIVE BOT MESSAGES
@@ -730,8 +1002,8 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <p class="text-sm font-medium leading-relaxed">${escapeHtml(text)}</p>
       </div>
-      <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 via-orange-500 to-red-500 text-white flex items-center justify-center flex-shrink-0 text-xs shadow-sm">
-        <i data-lucide="user" class="w-4 h-4"></i>
+      <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-blue-600 via-orange-500 to-red-500 text-white flex items-center justify-center flex-shrink-0 text-xs shadow-sm">
+        <i data-lucide="user" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
       </div>
     `;
 
@@ -743,7 +1015,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function appendBotMessage(replyText, timestamp, status = 'success', extraConfig = {}) {
     const time = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const wrapper = document.createElement('div');
-    wrapper.className = 'message-bot message-enter flex items-start space-x-3';
+    wrapper.className = 'message-bot message-enter flex items-start space-x-2 sm:space-x-3';
 
     let bgBadge = 'bg-blue-600 text-white';
     let iconName = 'bot';
@@ -761,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let buttonsHtml = '';
 
-    // Render interactive options buttons (e.g. Confirm / Cancel / Gap Choices)
+    // Interactive Confirm / Cancel / Gap Option Buttons (Thumb-sized min-h-[38px])
     if (extraConfig.options && extraConfig.options.length > 0 && extraConfig.actionId) {
       buttonsHtml = `
         <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-2 action-buttons-group">
@@ -773,10 +1045,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return `
               <button 
                 onclick="handleActionChoice('${extraConfig.actionId}', '${opt.choice}', this)"
-                class="px-3.5 py-1.5 rounded-lg text-xs transition active:scale-95 flex items-center space-x-1 cursor-pointer ${btnClass}"
+                class="min-h-[38px] px-3.5 py-2 rounded-lg text-xs transition active:scale-95 flex items-center space-x-1 cursor-pointer ${btnClass}"
               >
-                ${opt.choice === 'confirm' ? '<i data-lucide=\"check\" class=\"w-3.5 h-3.5 mr-0.5\"></i>' : ''}
-                ${opt.choice === 'cancel' ? '<i data-lucide=\"x\" class=\"w-3.5 h-3.5 mr-0.5\"></i>' : ''}
+                ${opt.choice === 'confirm' ? '<i data-lucide="check" class="w-3.5 h-3.5 mr-0.5"></i>' : ''}
+                ${opt.choice === 'cancel' ? '<i data-lucide="x" class="w-3.5 h-3.5 mr-0.5"></i>' : ''}
                 <span>${escapeHtml(opt.label)}</span>
               </button>
             `;
@@ -785,28 +1057,36 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }
 
-    // Render Undo Button
+    // Undo Button + Mobile Shortcut to Inspect Sheet
     if (extraConfig.entryId) {
       buttonsHtml = `
-        <div class="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
           <button 
             id="btn-undo-${extraConfig.entryId}"
             onclick="handleUndoPayment('${extraConfig.entryId}', this)"
-            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80 transition active:scale-95 flex items-center space-x-1 cursor-pointer"
+            class="min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80 transition active:scale-95 flex items-center space-x-1 cursor-pointer"
           >
             <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-orange-600 dark:text-orange-400"></i>
             <span>Undo Entry</span>
           </button>
-          <span class="text-[10px] text-slate-400 dark:text-slate-500">Reverts this cell in sheet</span>
+          <button
+            type="button"
+            onclick="setMobileView('ledger')"
+            class="md:hidden min-h-[36px] px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 flex items-center space-x-1 active:scale-95 cursor-pointer"
+          >
+            <span>View Sheet</span>
+            <i data-lucide="arrow-right" class="w-3 h-3"></i>
+          </button>
+          <span class="hidden md:inline text-[10px] text-slate-400 dark:text-slate-500">Reverts this cell in sheet</span>
         </div>
       `;
     }
 
     wrapper.innerHTML = `
-      <div class="w-8 h-8 rounded-full ${bgBadge} flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm">
-        <i data-lucide="${iconName}" class="w-4 h-4"></i>
+      <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full ${bgBadge} flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm">
+        <i data-lucide="${iconName}" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
       </div>
-      <div class="message-bot-bubble bot-markdown text-sm text-slate-800 dark:text-slate-100">
+      <div class="message-bot-bubble bot-markdown text-xs sm:text-sm text-slate-800 dark:text-slate-100">
         <div class="flex items-center justify-between mb-1 text-[10px] text-slate-400 dark:text-slate-500">
           <span class="font-bold text-xs text-blue-600 dark:text-blue-400">Fees Assistant</span>
           <span>${time}</span>
@@ -826,7 +1106,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==============================================================
 
   window.handleActionChoice = async function(actionId, choice, btnElement) {
-    // Disable all buttons in this group immediately
     const group = btnElement.closest('.action-buttons-group');
     if (group) {
       group.querySelectorAll('button').forEach(b => {
@@ -857,7 +1136,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (res.ok) {
         if (data.status === 'confirmation_required') {
-          // Second step after gap choice
           appendBotMessage(data.reply, data.timestamp, data.status, {
             actionId: data.action_id,
             options: data.options
@@ -890,7 +1168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnElement) {
       btnElement.disabled = true;
       btnElement.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-slate-400"></i><span class="text-slate-400">Undone ✓</span>`;
-      btnElement.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed flex items-center space-x-1";
+      btnElement.className = "min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed flex items-center space-x-1";
     }
 
     typingIndicator.classList.remove('hidden');
@@ -931,7 +1209,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const message = chatInput.value.trim();
     if (!message) return;
 
-    // Preserved text in case of network error!
     const savedMessage = message;
 
     appendUserMessage(message);
@@ -953,7 +1230,6 @@ document.addEventListener('DOMContentLoaded', () => {
       btnSend.disabled = false;
 
       if (response.ok) {
-        // Confirmation proposal / Warning with buttons
         appendBotMessage(data.reply, data.timestamp, data.status, {
           actionId: data.action_id,
           options: data.options,
@@ -972,7 +1248,6 @@ document.addEventListener('DOMContentLoaded', () => {
       typingIndicator.classList.add('hidden');
       btnSend.disabled = false;
 
-      // SAFETY FEATURE: DO NOT LOSE THE ADMIN'S TYPED MESSAGE!
       chatInput.value = savedMessage;
       appendBotMessage('⚠️ **Connection error:** The server could not be reached. Your message was kept in the input box so you don\'t have to retype it.', null, 'error');
       chatInput.focus();
@@ -1021,7 +1296,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Simulated Network Drop Test
   window.simulateNetworkError = function() {
     chatInput.value = "Student Dummy has paid 2000";
     appendBotMessage('⚠️ **[Simulated Test] Connection error:** Server unreachable. Notice that your typed message has been safely preserved in the input box below!', null, 'warning');
@@ -1029,18 +1303,23 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.useQuickPrompt = function(promptText) {
+    if (window.innerWidth < 768) {
+      window.setMobileView('chat');
+    }
     chatInput.value = promptText;
     chatForm.dispatchEvent(new Event('submit'));
   };
 
-  btnClearChat.addEventListener('click', () => {
-    if (confirm('Clear the chat history screen?')) {
-      const welcome = messagesContainer.firstElementChild;
-      messagesContainer.innerHTML = '';
-      if (welcome) messagesContainer.appendChild(welcome);
-      scrollToBottom();
-    }
-  });
+  if (btnClearChat) {
+    btnClearChat.addEventListener('click', () => {
+      if (confirm('Clear the chat history screen?')) {
+        const welcome = messagesContainer.firstElementChild;
+        messagesContainer.innerHTML = '';
+        if (welcome) messagesContainer.appendChild(welcome);
+        scrollToBottom();
+      }
+    });
+  }
 
   // ==============================================================
   // 12. ACTIVITY LOG (SESSION HISTORY)
@@ -1099,6 +1378,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnOpenActivityLog) {
     btnOpenActivityLog.addEventListener('click', () => {
+      closeMobileMoreMenu();
       refreshActivityLog();
       if (modalActivityLog) modalActivityLog.classList.remove('hidden');
     });
@@ -1120,13 +1400,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnOpenAddStudent) {
     btnOpenAddStudent.addEventListener('click', () => {
+      closeMobileMoreMenu();
       if (addStudentStatus) addStudentStatus.classList.add('hidden');
       if (inputNewStudentName) inputNewStudentName.value = '';
       if (inputNewStudentStd) inputNewStudentStd.value = '';
       if (inputNewStudentSchool) inputNewStudentSchool.value = '';
       if (inputNewStudentFee) inputNewStudentFee.value = '';
       if (modalAddStudent) modalAddStudent.classList.remove('hidden');
-      if (inputNewStudentName) setTimeout(() => inputNewStudentName.focus(), 100);
+      if (inputNewStudentName && window.innerWidth >= 640) {
+        setTimeout(() => inputNewStudentName.focus(), 100);
+      }
     });
   }
 
@@ -1196,16 +1479,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Close modals on overlay click or Escape key
+  // Close modals & mobile overflow menu on outside click or Escape key
   window.addEventListener('click', (e) => {
     if (modalActivityLog && e.target === modalActivityLog) modalActivityLog.classList.add('hidden');
     if (modalAddStudent && e.target === modalAddStudent) modalAddStudent.classList.add('hidden');
+    if (mobileMoreMenu && !mobileMoreMenu.classList.contains('hidden')) {
+      const wrapper = document.getElementById('mobile-more-wrapper');
+      if (wrapper && !wrapper.contains(e.target)) {
+        closeMobileMoreMenu();
+      }
+    }
   });
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (modalActivityLog) modalActivityLog.classList.add('hidden');
       if (modalAddStudent) modalAddStudent.classList.add('hidden');
+      closeMobileMoreMenu();
     }
   });
 
